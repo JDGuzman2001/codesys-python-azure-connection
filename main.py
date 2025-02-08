@@ -3,16 +3,22 @@ import json
 from azure.iot.device.aio import IoTHubDeviceClient
 import asyncio
 import datetime
+import csv
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 # Configuración del servidor MQTT
-BROKER = "7449d089e59e402a8ba42b99c0f9b87b.s1.eu.hivemq.cloud"
-PORT = 8883
+BROKER = os.getenv('MQTT_BROKER')
+PORT = int(os.getenv('MQTT_PORT', 8883))
 TOPICS = ["hivemqcloud"] + [f"hivemqcloud{i}" for i in range(1, 14)]  # Tópicos desde hivemqcloud1 hasta hivemqcloud13
-USERNAME = "jdguzmanj"  # Cambia por tu usuario de HiveMQ
-PASSWORD = "JD.GuzmanJ2001."  # Cambia por tu contraseña de HiveMQ
+USERNAME = os.getenv('MQTT_USERNAME')
+PASSWORD = os.getenv('MQTT_PASSWORD')
 
 # Define connection string de Azure IoT Hub
-connectionString = "HostName=automatica3-iot-hub.azure-devices.net;DeviceId=start-codesys;SharedAccessKey=b1YAuFHwJTRW+eu3P0IZjBVQJhwNAMClaAMf3VVc714="
+connectionString = os.getenv('AZURE_IOT_CONNECTION_STRING')
 
 # Función para enviar datos a Azure IoT Hub
 async def send_to_iot_hub(data):
@@ -36,57 +42,68 @@ async def send_to_iot_hub(data):
 # Función que se ejecuta al recibir un mensaje MQTT
 def on_message(client, userdata, msg):
     try:
-        # Decodificar el payload y convertirlo a un diccionario
         message = json.loads(msg.payload.decode())
 
-        # Acceder al valor "v" dentro del mensaje
         if "values" in message and len(message["values"]) > 0:
-            v_value = message["values"][0].get("v", None)  # Obtener el valor de "v"
+            v_value = message["values"][0].get("v", None)
             if v_value is not None:
-                print(f"Valor 'v' recibido en el tópico {msg.topic}: {v_value}")
+                # Verificar si el valor es numérico pero NO es booleano
+                if isinstance(v_value, (int, float)) and not isinstance(v_value, bool):
+                    print(f"Valor numérico 'v' recibido en el tópico {msg.topic}: {v_value}")
 
-                if msg.topic == "hivemqcloud":
-                    name = f"START"
-                elif msg.topic == "hivemqcloud1":
-                    name = f"B1"
-                elif msg.topic == "hivemqcloud2":
-                    name = f"SENSOR_ENTRADA"
-                elif msg.topic == "hivemqcloud3":
-                    name = f"LECHE_REQUERIDA"
-                elif msg.topic == "hivemqcloud4":
-                    name = f"B2"
-                elif msg.topic == "hivemqcloud5":
-                    name = f"B3"
-                elif msg.topic == "hivemqcloud6":
-                    name = f"B4"
-                elif msg.topic == "hivemqcloud7":
-                    name = f"C1"
-                elif msg.topic == "hivemqcloud8":
-                    name = f"MEZCLADOR"
-                elif msg.topic == "hivemqcloud9":
-                    name = f"TEMP_REQUERIDA_SALIDA"
-                elif msg.topic == "hivemqcloud10":
-                    name = f"SENSOR_TEMPE_SAL"
-                elif msg.topic == "hivemqcloud11":
-                    name = f"SENSOR_TEMPE_MEZ"
-                elif msg.topic == "hivemqcloud12":
-                    name = f"TEMP_REQUERIDA_INT"
-                elif msg.topic == "hivemqcloud13":
-                    name = f"V1"
+                    if msg.topic == "hivemqcloud":
+                        name = f"START"
+                    elif msg.topic == "hivemqcloud1":
+                        name = f"B1"
+                    elif msg.topic == "hivemqcloud2":
+                        name = f"SENSOR_ENTRADA"
+                    elif msg.topic == "hivemqcloud3":
+                        name = f"LECHE_REQUERIDA"
+                    elif msg.topic == "hivemqcloud4":
+                        name = f"B2"
+                    elif msg.topic == "hivemqcloud5":
+                        name = f"B3"
+                    elif msg.topic == "hivemqcloud6":
+                        name = f"B4"
+                    elif msg.topic == "hivemqcloud7":
+                        name = f"C1"
+                    elif msg.topic == "hivemqcloud8":
+                        name = f"MEZCLADOR"
+                    elif msg.topic == "hivemqcloud9":
+                        name = f"TEMP_REQUERIDA_SALIDA"
+                    elif msg.topic == "hivemqcloud10":
+                        name = f"SENSOR_TEMPE_SAL"
+                    elif msg.topic == "hivemqcloud11":
+                        name = f"SENSOR_TEMPE_MEZ"
+                    elif msg.topic == "hivemqcloud12":
+                        name = f"TEMP_REQUERIDA_INT"
+                    elif msg.topic == "hivemqcloud13":
+                        name = f"V1"
+                    else:
+                        name = f"UNKNOWN_TOPIC = {v_value}"
+
+                    timestamp = str(datetime.datetime.now())
+                    data = {
+                        "topic": msg.topic,
+                        "name": name,
+                        "value": v_value,
+                        "timestamp": timestamp
+                    }
+
+                    # Solo guardar en CSV si el valor es numérico y no booleano
+                    csv_file = 'sensor_data.csv'
+                    file_exists = os.path.isfile(csv_file)
+                    
+                    with open(csv_file, mode='a', newline='') as file:
+                        writer = csv.DictWriter(file, fieldnames=['timestamp', 'topic', 'name', 'value'])
+                        if not file_exists:
+                            writer.writeheader()
+                        writer.writerow(data)
+
+                    # Enviar el JSON a Azure IoT Hub
+                    asyncio.run(send_to_iot_hub(data=json.dumps(data)))
                 else:
-                    name = f"UNKNOWN_TOPIC = {v_value}"
-
-                # Construir el mensaje para enviar a Azure IoT Hub
-                data = {
-                    "topic": msg.topic,
-                    "name": name,
-                    "value": v_value,
-                    "timestamp": str(datetime.datetime.now())  # Marca de tiempo actual
-                }
-
-                # Enviar el JSON a Azure IoT Hub
-                asyncio.run(send_to_iot_hub(data=json.dumps(data)))
-
+                    print(f"Valor no numérico o booleano ignorado en el tópico {msg.topic}: {v_value}")
             else:
                 print(f"No se encontró el valor 'v' en el mensaje del tópico {msg.topic}")
         else:
