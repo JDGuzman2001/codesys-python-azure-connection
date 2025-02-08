@@ -22,8 +22,8 @@ Este proyecto implementa un puente (bridge) entre un broker MQTT y Azure IoT Hub
 
 1. Clonar el repositorio:
 ```bash
-git clone [URL_DEL_REPOSITORIO]
-cd [NOMBRE_DEL_DIRECTORIO]
+git clone https://github.com/JDGuzman2001/codesys-python-azure-connection.git
+cd codesys-python-azure-connection
 ```
 
 2. Instalar dependencias:
