@@ -1,144 +1,100 @@
-# Python Code README: HiveMQ to Azure IoT Hub via CODESYS and KEPServer
+# MQTT to Azure IoT Hub Bridge
 
-This README explains the functionality of the Python script, which connects CODESYS to HiveMQ via KEPServer, processes the received MQTT messages, and forwards the relevant data to Microsoft Azure IoT Hub.
+Este proyecto implementa un puente (bridge) entre un broker MQTT y Azure IoT Hub, específicamente diseñado para la adecuación de leche. El sistema captura datos de diversos sensores y actuadores, los procesa y los envía a Azure IoT Hub para su posterior análisis y almacenamiento.
 
----
+## Características
 
-## **Overview**
+- Conexión segura a broker MQTT mediante SSL/TLS
+- Procesamiento de múltiples tópicos MQTT
+- Envío de datos a Azure IoT Hub
+- Almacenamiento local en CSV como respaldo
+- Manejo de variables de entorno para configuración segura
+- Procesamiento específico para valores numéricos
 
-This Python script demonstrates a complete integration pipeline:
-1. **Receive data** from CODESYS via HiveMQ MQTT broker.
-2. **Process incoming messages**, extract key data, and map topics to meaningful identifiers.
-3. **Send processed data** to Microsoft Azure IoT Hub for further analysis or storage.
+## Requisitos Previos
 
----
+- Python 3.8 o superior
+- Cuenta en HiveMQ Cloud (o broker MQTT compatible)
+- Cuenta en Azure con IoT Hub configurado
+- Pip (gestor de paquetes de Python)
 
-## **Prerequisites**
+## Instalación
 
-1. **HiveMQ Cloud Account**:
-   - HiveMQ Broker URL, Port, Username, and Password.
-   - MQTT topics used for data communication.
-2. **Azure IoT Hub**:
-   - Connection string for your Azure IoT device.
-3. **Python Libraries**:
-   - `paho-mqtt`: For handling MQTT communication.
-   - `azure-iot-device`: For Azure IoT Hub integration.
-   - `asyncio`: For asynchronous operations.
-   - `json`: For encoding and decoding message payloads.
-4. **CODESYS and KEPServerEX**:
-   - Configured to send data to the specified HiveMQ broker topics.
-
----
-
-## **Setup**
-
-### 1. Install Required Python Libraries
-Run the following command to install the necessary libraries:
+1. Clonar el repositorio:
 ```bash
-pip install paho-mqtt azure-iot-device
+git clone [URL_DEL_REPOSITORIO]
+cd [NOMBRE_DEL_DIRECTORIO]
 ```
 
-### 2. Update Configuration
-Edit the script to include your credentials and connection details:
-- **HiveMQ Broker Settings**:
-  ```python
-  BROKER = "your-hivemq-broker-url"
-  PORT = 8883
-  USERNAME = "your-username"
-  PASSWORD = "your-password"
-  ```
-- **Azure IoT Hub Connection String**:
-  ```python
-  connectionString = "your-azure-iot-hub-connection-string"
-  ```
-
-### 3. MQTT Topics
-Ensure the topics match the ones configured in KEPServerEX:
-```python
-TOPICS = ["hivemqcloud"] + [f"hivemqcloud{i}" for i in range(1, 14)]
-```
-
----
-
-## **How It Works**
-
-### 1. MQTT Connection
-- The script connects to the HiveMQ broker using SSL/TLS for secure communication.
-- On successful connection, it subscribes to predefined topics.
-
-### 2. Message Handling
-- The `on_message` function processes incoming MQTT messages:
-  - Decodes the JSON payload.
-  - Extracts the `v` value (key variable) from the message.
-  - Maps the topic to a meaningful name (e.g., START, SENSOR_ENTRADA).
-
-### 3. Azure IoT Hub Integration
-- Extracted data is forwarded to Azure IoT Hub using the `send_to_iot_hub` function:
-  - Includes the topic name, mapped identifier, value, and a timestamp.
-  - Azure IoT SDK handles secure transmission.
-
-### 4. Error Handling
-- The script gracefully handles:
-  - MQTT connection issues.
-  - Message decoding errors.
-  - Azure IoT Hub communication failures.
-
----
-
-## **Execution**
-
-Run the script using:
+2. Instalar dependencias:
 ```bash
-python your_script_name.py
+pip install -r requirements.txt
 ```
 
----
+3. Configurar variables de entorno:
+   - Copiar `.env.example` a `.env`
+   - Completar las variables en `.env` con tus credenciales
 
-## **Example Workflow**
+## Configuración
 
-1. **KEPServerEX publishes data** from CODESYS to HiveMQ under topic `hivemqcloud`.
-2. **HiveMQ forwards the message** to this script.
-3. The script processes the message:
-   - Example payload:
-     ```json
-     {
-         "values": [
-             { "v": 123 }
-         ]
-     }
-     ```
-   - Mapped output:
-     ```json
-     {
-         "topic": "hivemqcloud",
-         "name": "START",
-         "value": 123,
-         "timestamp": "2024-11-30T12:34:56"
-     }
-     ```
-4. **Azure IoT Hub receives the data** for further processing or visualization.
+### Variables de Entorno
+Crear un archivo `.env` con las siguientes variables:
 
----
+```plaintext
+# MQTT Configuration
+MQTT_BROKER=your_broker_url
+MQTT_PORT=8883
+MQTT_USERNAME=your_username
+MQTT_PASSWORD=your_password
 
-## **Potential Improvements**
+# Azure IoT Hub Configuration
+AZURE_IOT_CONNECTION_STRING=your_connection_string
+```
 
-- **Environment Variables**:
-  Store sensitive data (credentials, connection strings) in environment variables.
-- **Dynamic Topic Mapping**:
-  Load topic mappings from a configuration file for better flexibility.
-- **Batch Processing**:
-  Optimize by batching MQTT messages for fewer Azure IoT Hub calls.
+## Tópicos MQTT Soportados
 
----
+El sistema procesa los siguientes tópicos:
+- hivemqcloud (START)
+- hivemqcloud1 (B1)
+- hivemqcloud2 (SENSOR_ENTRADA)
+- hivemqcloud3 (LECHE_REQUERIDA)
+- hivemqcloud4 (B2)
+- hivemqcloud5 (B3)
+- hivemqcloud6 (B4)
+- hivemqcloud7 (C1)
+- hivemqcloud8 (MEZCLADOR)
+- hivemqcloud9 (TEMP_REQUERIDA_SALIDA)
+- hivemqcloud10 (SENSOR_TEMPE_SAL)
+- hivemqcloud11 (SENSOR_TEMPE_MEZ)
+- hivemqcloud12 (TEMP_REQUERIDA_INT)
+- hivemqcloud13 (V1)
 
-## **Support**
+## Uso
 
-For any questions or issues, refer to:
-- [HiveMQ Documentation](https://www.hivemq.com/docs/)
-- [Azure IoT Hub Documentation](https://learn.microsoft.com/en-us/azure/iot-hub/)
+1. Asegúrate de tener todas las variables de entorno configuradas
+2. Ejecuta el script:
+```bash
+python main.py
+```
 
---- 
+## Estructura de Datos
 
-## **Disclaimer**
+Los datos se almacenan en formato CSV y se envían a Azure IoT Hub con la siguiente estructura:
 
-Ensure proper security practices when handling sensitive credentials and data. Avoid hardcoding passwords and connection strings directly in the script.
+```json
+{
+    "topic": "nombre_del_topico",
+    "name": "nombre_del_sensor",
+    "value": valor_numerico,
+    "timestamp": "fecha_y_hora"
+}
+```
+
+## Manejo de Errores
+
+El sistema incluye manejo de errores para:
+- Fallos en la conexión MQTT
+- Errores en la decodificación de mensajes JSON
+- Problemas de conexión con Azure IoT Hub
+- Validación de tipos de datos
+
